@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        p {
+            text-align: center;
+            color: #666;
+        }
+        .habit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .habit-form input, .habit-form button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .habit-form button {
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .habit-form button:hover {
+            background-color: #218838;
+        }
+        .habit-list {
+            margin-top: 20px;
+        }
+        .habit-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            animation: fadeIn 0.5s;
+        }
+        .habit-item.removing {
+            animation: fadeOut 0.5s forwards;
+        }
+        .delete-button {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+        .motivational-quotes {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .progress-tracking {
+            margin-top: 20px;
+        }
+        .progress-bar-container {
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            background-color: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            height: 20px;
+        }
+        .progress {
+            background-color: #28a745;
+            height: 100%;
+            transition: width 0.3s;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px;
+                padding: 10px;
+            }
+            .habit-form input, .habit-form button {
+                font-size: 14px;
+                padding: 8px;
+            }
+            .habit-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .habit-item span, .habit-item button {
+                margin-top: 5px;
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Habit Tracker</h1>
+        <p>Track your habits and get AI-powered suggestions to stay on track!</p>
+        <form class="habit-form">
+            <input type="text" id="habit-input" placeholder="Enter a new habit">
+            <button type="button" onclick="addHabit()">Add Habit</button>
+        </form>
+        <div class="habit-list" id="habit-list"></div>
+        <div class="motivational-quotes">
+            <h2>Motivational Quote</h2>
+            <p id="quote"></p>
+        </div>
+        <div class="progress-tracking">
+            <div class="progress-bar-container">
+                <div class="progress-bar">
+                    <div class="progress" id="progress"></div>
+                </div>
+                <p id="progress-bar-label">Progress: 0/0 habits completed</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function getHabitSuggestions() {
+            const response = await fetch('https://api.example.com/habit-suggestions');
+            const suggestions = await response.json();
+            return suggestions;
+        }
+
+        function addHabit() {
+            const habitInput = document.getElementById('habit-input');
+            const habitList = document.getElementById('habit-list');
+
+            if (habitInput.value.trim() !== '') {
+                const habitItem = document.createElement('div');
+                habitItem.className = 'habit-item';
+
+                const habitCheckbox = document.createElement('input');
+                habitCheckbox.type = 'checkbox';
+                habitCheckbox.className = 'habit-checkbox';
+
+                const habitLabel = document.createElement('span');
+                habitLabel.textContent = habitInput.value;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-button';
+                deleteButton.addEventListener('click', () => deleteHabit(habitItem, habitInput.value));
+
+                habitItem.appendChild(habitCheckbox);
+                habitItem.appendChild(habitLabel);
+                habitItem.appendChild(deleteButton);
+                habitList.appendChild(habitItem);
+
+                const habits = loadHabitsFromLocalStorage();
+                habits.push({ name: habitInput.value, completed: false });
+                saveHabitsToLocalStorage(habits);
+
+                habitInput.value = '';
+            }
+
+            updateProgressBar();
+        }
+
+        const quotes = [
+            "The journey of a thousand miles begins with one step.",
+            "What you do today can improve all your tomorrows.",
+            "The secret of getting ahead is getting started.",
+            "It always seems impossible until it’s done.",
+            "Don’t watch the clock; do what it does. Keep going."
+        ];
+
+        function displayRandomQuote() {
+            const quoteElement = document.getElementById('quote');
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            quoteElement.textContent = quotes[randomIndex];
+        }
+
+        displayRandomQuote();
+
+        function deleteHabit(habitItem, name) {
+            habitItem.classList.add('removing');
+            setTimeout(() => {
+                const habits = loadHabitsFromLocalStorage();
+                const updatedHabits = habits.filter(habit => habit.name !== name);
+                saveHabitsToLocalStorage(updatedHabits);
+                renderHabits();
+                updateProgressBar();
+            }, 500); // Match the duration of the fadeOut animation
+        }
+
+        function updateProgressBar() {
+            const progressBarLabel = document.getElementById('progress-bar-label');
+            const progress = document.getElementById('progress');
+
+            const habits = loadHabitsFromLocalStorage();
+            const completedHabits = habits.filter(habit => habit.completed).length;
+            const progressPercentage = (completedHabits / habits.length) * 100;
+
+            progressBarLabel.textContent = `Progress: ${completedHabits}/${habits.length} habits completed`;
+            progress.style.width = `${progressPercentage}%`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const habits = loadHabitsFromLocalStorage();
+            const habitList = document.getElementById('habit-list');
+            habits.forEach(habit => {
+                const habitItem = document.createElement('div');
+                habitItem.className = 'habit-item';
+
+                const habitCheckbox = document.createElement('input');
+                habitCheckbox.type = 'checkbox';
+                habitCheckbox.className = 'habit-checkbox';
+                habitCheckbox.checked = habit.completed;
+
+                const habitLabel = document.createElement('span');
+                habitLabel.textContent = habit.name;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-button';
+                deleteButton.addEventListener('click', () => deleteHabit(habitItem, habit.name));
+
+                habitItem.appendChild(habitCheckbox);
+                habitItem.appendChild(habitLabel);
+                habitItem.appendChild(deleteButton);
+                habitList.appendChild(habitItem);
+            });
+
+            updateProgressBar();
+        });
+
+        function saveHabitsToLocalStorage(habits) {
+            localStorage.setItem('habits', JSON.stringify(habits));
+        }
+
+        function loadHabitsFromLocalStorage() {
+            const habits = localStorage.getItem('habits');
+            return habits ? JSON.parse(habits) : [];
+        }
+
+        function renderHabits() {
+            const habitList = document.getElementById('habit-list');
+            habitList.innerHTML = '';
+            const habits = loadHabitsFromLocalStorage();
+            habits.forEach((habit, index) => {
+                const habitItem = document.createElement('div');
+                habitItem.className = 'habit-item';
+
+                const habitCheckbox = document.createElement('input');
+                habitCheckbox.type = 'checkbox';
+                habitCheckbox.className = 'habit-checkbox';
+                habitCheckbox.checked = habit.completed;
+                habitCheckbox.addEventListener('change', () => {
+                    habit.completed = habitCheckbox.checked;
+                    saveHabitsToLocalStorage(habits);
+                    updateProgressBar();
+                });
+
+                const habitLabel = document.createElement('span');
+                habitLabel.textContent = habit.name;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-button';
+                deleteButton.addEventListener('click', () => deleteHabit(habitItem, habit.name));
+
+                habitItem.appendChild(habitCheckbox);
+                habitItem.appendChild(habitLabel);
+                habitItem.appendChild(deleteButton);
+                habitList.appendChild(habitItem);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHabits();
+            updateProgressBar();
+        });
+    </script>
+</body>
+</html>
